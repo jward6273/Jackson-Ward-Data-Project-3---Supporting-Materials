@@ -1,0 +1,444 @@
+{smcl}
+{com}{sf}{ul off}{txt}{.-}
+      name:  {res}<unnamed>
+       {txt}log:  {res}/Users/hacksonward/Downloads/dta_prjct3.txt
+  {txt}log type:  {res}smcl
+ {txt}opened on:  {res}14 Apr 2026, 22:45:01
+{txt}
+{com}. 
+. ******MERGING ZIP-LEVEL DATASETS******
+. 
+. cd "/Users/hacksonward/Downloads"
+{res}/Users/hacksonward/Downloads
+{txt}
+{com}. import excel using "COUNTY_ZIP_062020", first clear
+{res}{text}(6 vars, 54,197 obs)
+
+{com}. 
+. *convert zip to 3 digit zip*
+. gen zip3=substr(ZIP,1,3)
+{txt}
+{com}. 
+. save "COUNTY_ZIP_062020.dta", replace
+{txt}{p 0 4 2}
+file {bf}
+COUNTY_ZIP_062020.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. *get 2020&2021 housing data*
+. import excel using "hpi_at_zip3", cellrange(A6:D42056) first clear 
+{res}{text}(4 vars, 42,050 obs)
+
+{com}. keep if Year == 2020 | Year == 2021
+{txt}(40,292 observations deleted)
+
+{com}. gen zip3 = string(ThreeDigitZIPCode, "%03.0f")
+{txt}
+{com}. keep zip3 Year HPI 
+{txt}
+{com}. reshape wide HPI, i(zip3) j(Year)
+{res}{txt}(j = 2020 2021)
+
+Data{col 36}Long{col 43}->{col 48}Wide
+{hline 77}
+Number of observations     {res}       1,758   {txt}->   {res}879         
+{txt}Number of variables        {res}           3   {txt}->   {res}3           
+{txt}j variable (2 values)              {res}Year   {txt}->   (dropped)
+xij variables:
+                                    {res}HPI   {txt}->   {res}HPI2020 HPI2021
+{txt}{hline 77}
+
+{com}. rename HPI2020 hpi_2020
+{res}{txt}
+{com}. rename HPI2021 hpi_2021
+{res}{txt}
+{com}. save "HPI_2020_2021_wide.dta", replace
+{txt}{p 0 4 2}
+file {bf}
+HPI_2020_2021_wide.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. *merge together*
+. use COUNTY_ZIP_062020, clear
+{txt}
+{com}. merge m:1 zip3 using "HPI_2020_2021_wide.dta"
+{res}
+{txt}{col 5}Result{col 33}Number of obs
+{col 5}{hline 41}
+{col 5}Not matched{col 30}{res}             829
+{txt}{col 9}from master{col 30}{res}             829{txt}  (_merge==1)
+{col 9}from using{col 30}{res}               0{txt}  (_merge==2)
+
+{col 5}Matched{col 30}{res}          53,368{txt}  (_merge==3)
+{col 5}{hline 41}
+
+{com}. drop if _merge == 1
+{txt}(829 observations deleted)
+
+{com}. drop _merge
+{txt}
+{com}. collapse (mean) hpi_2020 hpi_2021 [aweight=RES_RATIO], by(COUNTY)
+{res}{txt}
+{com}. destring COUNTY, gen(fips)
+{txt}COUNTY: all characters numeric; fips {res}generated {txt}as {res}long
+{txt}
+{com}. drop COUNTY
+{txt}
+{com}. save "county_hpi.dta", replace
+{txt}{p 0 4 2}
+file {bf}
+county_hpi.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. ******COUNTY LEVEL INCOME CONTROLS******
+. *Clean 2020 SAIPE Data*
+. import excel using "est20all", cellrange(A4:Y3199) first clear
+{res}{text}(25 vars, 3,195 obs)
+
+{com}. destring CountyFIPSCode, replace
+{txt}CountyFIPSCode: all characters numeric; {res}replaced {txt}as {res}int
+{txt}
+{com}. drop if CountyFIPSCode == 0
+{txt}(52 observations deleted)
+
+{com}. destring StateFIPSCode, replace
+{txt}StateFIPSCode: all characters numeric; {res}replaced {txt}as {res}byte
+{txt}
+{com}. gen fips = (StateFIPSCode * 1000) + CountyFIPSCode
+{txt}
+{com}. 
+. rename PovertyPercentAllAges pov_2020
+{res}{txt}
+{com}. rename MedianHouseholdIncome inc_2020
+{res}{txt}
+{com}. destring pov_2020 inc_2020, replace force
+{txt}pov_2020: all characters numeric; {res}replaced {txt}as {res}double
+{txt}(1 missing value generated)
+{res}{txt}inc_2020: all characters numeric; {res}replaced {txt}as {res}long
+{txt}(1 missing value generated)
+{res}{txt}
+{com}. keep fips pov_2020 inc_2020
+{txt}
+{com}. save "SAIPE_2020.dta", replace
+{txt}{p 0 4 2}
+file {bf}
+SAIPE_2020.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. *Clean 2021 SAIPE Data*
+. import excel using "est21all", cellrange(A4:Y3199) first clear
+{res}{text}(25 vars, 3,195 obs)
+
+{com}. destring CountyFIPSCode, replace
+{txt}CountyFIPSCode: all characters numeric; {res}replaced {txt}as {res}int
+{txt}
+{com}. drop if CountyFIPSCode == 0
+{txt}(52 observations deleted)
+
+{com}. destring StateFIPSCode, replace
+{txt}StateFIPSCode: all characters numeric; {res}replaced {txt}as {res}byte
+{txt}
+{com}. gen fips = (StateFIPSCode * 1000) + CountyFIPSCode
+{txt}
+{com}. 
+. rename PovertyPercentAllAges pov_2021
+{res}{txt}
+{com}. rename MedianHouseholdIncome inc_2021
+{res}{txt}
+{com}. destring pov_2021 inc_2021, replace force
+{txt}pov_2021: all characters numeric; {res}replaced {txt}as {res}double
+{txt}(1 missing value generated)
+{res}{txt}inc_2021: all characters numeric; {res}replaced {txt}as {res}long
+{txt}(1 missing value generated)
+{res}{txt}
+{com}. keep fips pov_2021 inc_2021
+{txt}
+{com}. save "SAIPE_2021.dta", replace
+{txt}{p 0 4 2}
+file {bf}
+SAIPE_2021.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. ******MERGING COUNTY POP & COUNTY COVID DATA******
+. import delimited using "co-est2025-alldata.csv", clear 
+{res}{txt}(encoding automatically selected: ISO-8859-1)
+{text}(99 vars, 3,195 obs)
+
+{com}. *Dropping the state totals listed in the dataset*
+. drop if county == 0
+{txt}(51 observations deleted)
+
+{com}. 
+. gen fips = (state*1000)+county
+{txt}
+{com}. keep fips estimatesbase2020
+{txt}
+{com}. *dropping duplicate fips for a successful merge*
+. duplicates drop fips, force
+
+{p 0 4}{txt}Duplicates in terms of {res} fips{p_end}
+
+{txt}(0 observations are duplicates)
+
+{com}. save "2020_countypop.dta", replace
+{txt}{p 0 4 2}
+file {bf}
+2020_countypop.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. import delimited using "us-counties-2020.csv", clear
+{res}{txt}(encoding automatically selected: ISO-8859-1)
+{text}(6 vars, 884,737 obs)
+
+{com}. drop if fips == .
+{txt}(8,266 observations deleted)
+
+{com}. keep fips deaths state
+{txt}
+{com}. collapse (max) deaths, by(fips state)
+{res}{txt}
+{com}. *merge together*
+. merge 1:1 fips using "2020_countypop.dta"
+{res}{txt}{p 0 7 2}
+(variable
+{bf:fips} was {bf:long}, now {bf:double} to accommodate using data's values)
+{p_end}
+
+{col 5}Result{col 33}Number of obs
+{col 5}{hline 41}
+{col 5}Not matched{col 30}{res}             114
+{txt}{col 9}from master{col 30}{res}              94{txt}  (_merge==1)
+{col 9}from using{col 30}{res}              20{txt}  (_merge==2)
+
+{col 5}Matched{col 30}{res}           3,124{txt}  (_merge==3)
+{col 5}{hline 41}
+
+{com}. keep if _merge==3
+{txt}(114 observations deleted)
+
+{com}. drop _merge
+{txt}
+{com}. save "2020_county_popdeath", replace
+{txt}{p 0 4 2}
+file {bf}
+2020_county_popdeath.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. ******FINAL MERGE******
+. 
+. use "county_hpi.dta", clear
+{txt}
+{com}. 
+. * Merge in Mortality & Population data (from Part 1)
+. merge 1:1 fips using "2020_county_popdeath.dta"
+{res}{txt}{p 0 7 2}
+(variable
+{bf:fips} was {bf:long}, now {bf:double} to accommodate using data's values)
+{p_end}
+
+{col 5}Result{col 33}Number of obs
+{col 5}{hline 41}
+{col 5}Not matched{col 30}{res}              26
+{txt}{col 9}from master{col 30}{res}              16{txt}  (_merge==1)
+{col 9}from using{col 30}{res}              10{txt}  (_merge==2)
+
+{col 5}Matched{col 30}{res}           3,114{txt}  (_merge==3)
+{col 5}{hline 41}
+
+{com}. drop if _merge == 2
+{txt}(10 observations deleted)
+
+{com}. drop _merge
+{txt}
+{com}. 
+. * Merge in SAIPE data (from Part 3)
+. merge 1:1 fips using "SAIPE_2020.dta"
+{res}
+{txt}{col 5}Result{col 33}Number of obs
+{col 5}{hline 41}
+{col 5}Not matched{col 30}{res}              17
+{txt}{col 9}from master{col 30}{res}               2{txt}  (_merge==1)
+{col 9}from using{col 30}{res}              15{txt}  (_merge==2)
+
+{col 5}Matched{col 30}{res}           3,128{txt}  (_merge==3)
+{col 5}{hline 41}
+
+{com}. drop if _merge == 2
+{txt}(15 observations deleted)
+
+{com}. drop _merge
+{txt}
+{com}. 
+. merge 1:1 fips using "SAIPE_2021.dta"
+{res}
+{txt}{col 5}Result{col 33}Number of obs
+{col 5}{hline 41}
+{col 5}Not matched{col 30}{res}              17
+{txt}{col 9}from master{col 30}{res}               2{txt}  (_merge==1)
+{col 9}from using{col 30}{res}              15{txt}  (_merge==2)
+
+{col 5}Matched{col 30}{res}           3,128{txt}  (_merge==3)
+{col 5}{hline 41}
+
+{com}. drop if _merge == 2
+{txt}(15 observations deleted)
+
+{com}. drop _merge
+{txt}
+{com}. 
+. *Creating a variable to represent deaths per 1000, to make analysis more clear*
+. gen deathr = (deaths/estimatesbase2020)*1000
+{txt}(16 missing values generated)
+
+{com}. /*Overall we are missing the data for several counties, which may skew the results*/
+. 
+. ******EMPIRICAL ANALYSIS******
+. *summary statistics*
+. summarize deathr hpi_2020 hpi_2021 pov_2020 pov_2021 inc_2020 inc_2021 
+
+{txt}    Variable {c |}        Obs        Mean    Std. dev.       Min        Max
+{hline 13}{c +}{hline 57}
+{space 6}deathr {c |}{res}      3,114    1.176495    .8876088          0   9.036144
+{txt}{space 4}hpi_2020 {c |}{res}      3,130    460.1332    224.6874      112.7   2409.774
+{txt}{space 4}hpi_2021 {c |}{res}      3,130    513.3273    255.8143     126.22   2412.084
+{txt}{space 4}pov_2020 {c |}{res}      3,128    13.72612    5.392115          3       43.9
+{txt}{space 4}pov_2021 {c |}{res}      3,128    14.59636    5.628005        2.9       43.9
+{txt}{hline 13}{c +}{hline 57}
+{space 4}inc_2020 {c |}{res}      3,128    57440.95    14547.89      22901     160305
+{txt}{space 4}inc_2021 {c |}{res}      3,128    58925.76    15236.73      25653     153716
+{txt}
+{com}. 
+. *visualization*
+. twoway scatter hpi_2021 deathr, mcolor(midblue) msize(vtiny) ///
+>     xtitle("Deaths per 1,000 Residents (2020)") ///
+>     ytitle("Housing Price Index (2021)")
+{res}{txt}
+{com}. graph export hpi_deathr.png, replace
+{txt}{p 0 4 2}
+file {bf}
+/Users/hacksonward/Downloads/hpi_deathr.png{rm}
+saved as
+PNG
+format
+{p_end}
+
+{com}. 
+. *uncontrolled regression*
+. reg hpi_2021 deathr, robust
+
+{txt}Linear regression                               Number of obs     = {res}     3,114
+                                                {txt}F(1, 3112)        =  {res}   180.57
+                                                {txt}Prob > F          = {res}    0.0000
+                                                {txt}R-squared         = {res}    0.0566
+                                                {txt}Root MSE          =    {res} 245.94
+
+{txt}{hline 13}{c TT}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{col 14}{c |}{col 26}    Robust
+{col 1}    hpi_2021{col 14}{c |} Coefficient{col 26}  std. err.{col 38}      t{col 46}   P>|t|{col 54}     [95% con{col 67}f. interval]
+{hline 13}{c +}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{space 6}deathr {c |}{col 14}{res}{space 2}-67.88317{col 26}{space 2} 5.051775{col 37}{space 1}  -13.44{col 46}{space 3}0.000{col 54}{space 4}-77.78832{col 67}{space 3}-57.97802
+{txt}{space 7}_cons {c |}{col 14}{res}{space 2} 591.4854{col 26}{space 2} 8.619005{col 37}{space 1}   68.63{col 46}{space 3}0.000{col 54}{space 4} 574.5859{col 67}{space 3} 608.3849
+{txt}{hline 13}{c BT}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{res}{txt}
+{com}. 
+. *controlled first differences regression with state dummies*
+. gen hpi_change = hpi_2021 - hpi_2020
+{txt}
+{com}. gen inc_change = inc_2021 - inc_2020
+{txt}(2 missing values generated)
+
+{com}. gen pov_change = pov_2021 - pov_2020
+{txt}(2 missing values generated)
+
+{com}. encode state, gen(state_fe)
+{txt}
+{com}. reg hpi_change deathr inc_change pov_change inc_2020 pov_2020 i.state_fe, robust
+
+{txt}Linear regression                               Number of obs     = {res}     3,114
+                                                {txt}{help j_robustsingular:F(53, 3059) }      =  {res}        .
+                                                {txt}Prob > F          = {res}         .
+                                                {txt}R-squared         = {res}    0.7053
+                                                {txt}Root MSE          =    {res} 20.286
+
+{txt}{hline 16}{c TT}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{col 17}{c |}{col 29}    Robust
+{col 1}     hpi_change{col 17}{c |} Coefficient{col 29}  std. err.{col 41}      t{col 49}   P>|t|{col 57}     [95% con{col 70}f. interval]
+{hline 16}{c +}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{space 9}deathr {c |}{col 17}{res}{space 2}-3.060361{col 29}{space 2} .4892908{col 40}{space 1}   -6.25{col 49}{space 3}0.000{col 57}{space 4}-4.019733{col 70}{space 3}-2.100989
+{txt}{space 5}inc_change {c |}{col 17}{res}{space 2} .0004953{col 29}{space 2} .0001057{col 40}{space 1}    4.69{col 49}{space 3}0.000{col 57}{space 4} .0002881{col 70}{space 3} .0007025
+{txt}{space 5}pov_change {c |}{col 17}{res}{space 2}-.4483138{col 29}{space 2}  .208694{col 40}{space 1}   -2.15{col 49}{space 3}0.032{col 57}{space 4}-.8575084{col 70}{space 3}-.0391191
+{txt}{space 7}inc_2020 {c |}{col 17}{res}{space 2} .0004415{col 29}{space 2} .0000704{col 40}{space 1}    6.27{col 49}{space 3}0.000{col 57}{space 4} .0003034{col 70}{space 3} .0005796
+{txt}{space 7}pov_2020 {c |}{col 17}{res}{space 2}-.2923665{col 29}{space 2} .1484351{col 40}{space 1}   -1.97{col 49}{space 3}0.049{col 57}{space 4}-.5834092{col 70}{space 3}-.0013239
+{txt}{space 15} {c |}
+{space 7}state_fe {c |}
+{space 8}Alaska  {c |}{col 17}{res}{space 2}-20.28251{col 29}{space 2} 2.921302{col 40}{space 1}   -6.94{col 49}{space 3}0.000{col 57}{space 4}-26.01042{col 70}{space 3} -14.5546
+{txt}{space 7}Arizona  {c |}{col 17}{res}{space 2} 67.33186{col 29}{space 2} 5.727235{col 40}{space 1}   11.76{col 49}{space 3}0.000{col 57}{space 4} 56.10224{col 70}{space 3} 78.56147
+{txt}{space 6}Arkansas  {c |}{col 17}{res}{space 2} 2.307489{col 29}{space 2} 1.723334{col 40}{space 1}    1.34{col 49}{space 3}0.181{col 57}{space 4}-1.071521{col 70}{space 3} 5.686499
+{txt}{space 4}California  {c |}{col 17}{res}{space 2} 94.32003{col 29}{space 2} 5.169263{col 40}{space 1}   18.25{col 49}{space 3}0.000{col 57}{space 4} 84.18445{col 70}{space 3} 104.4556
+{txt}{space 6}Colorado  {c |}{col 17}{res}{space 2} 64.79322{col 29}{space 2} 3.707971{col 40}{space 1}   17.47{col 49}{space 3}0.000{col 57}{space 4} 57.52285{col 70}{space 3} 72.06359
+{txt}{space 6}Delaware  {c |}{col 17}{res}{space 2} 13.08248{col 29}{space 2} 1.723399{col 40}{space 1}    7.59{col 49}{space 3}0.000{col 57}{space 4} 9.703345{col 70}{space 3} 16.46162
+{txt}District of ..  {c |}{col 17}{res}{space 2} 71.80286{col 29}{space 2} 2.985241{col 40}{space 1}   24.05{col 49}{space 3}0.000{col 57}{space 4} 65.94958{col 70}{space 3} 77.65614
+{txt}{space 7}Florida  {c |}{col 17}{res}{space 2}  57.0938{col 29}{space 2} 2.924405{col 40}{space 1}   19.52{col 49}{space 3}0.000{col 57}{space 4} 51.35981{col 70}{space 3}  62.8278
+{txt}{space 7}Georgia  {c |}{col 17}{res}{space 2} 19.43207{col 29}{space 2}  2.35295{col 40}{space 1}    8.26{col 49}{space 3}0.000{col 57}{space 4} 14.81855{col 70}{space 3} 24.04559
+{txt}{space 8}Hawaii  {c |}{col 17}{res}{space 2} 38.92942{col 29}{space 2} 6.479555{col 40}{space 1}    6.01{col 49}{space 3}0.000{col 57}{space 4}  26.2247{col 70}{space 3} 51.63414
+{txt}{space 9}Idaho  {c |}{col 17}{res}{space 2} 98.67169{col 29}{space 2} 5.110828{col 40}{space 1}   19.31{col 49}{space 3}0.000{col 57}{space 4} 88.65069{col 70}{space 3} 108.6927
+{txt}{space 6}Illinois  {c |}{col 17}{res}{space 2}-13.55705{col 29}{space 2} 1.474415{col 40}{space 1}   -9.19{col 49}{space 3}0.000{col 57}{space 4}  -16.448{col 70}{space 3}-10.66611
+{txt}{space 7}Indiana  {c |}{col 17}{res}{space 2} 10.12174{col 29}{space 2} 1.809868{col 40}{space 1}    5.59{col 49}{space 3}0.000{col 57}{space 4} 6.573064{col 70}{space 3} 13.67042
+{txt}{space 10}Iowa  {c |}{col 17}{res}{space 2}-9.745114{col 29}{space 2} 1.590063{col 40}{space 1}   -6.13{col 49}{space 3}0.000{col 57}{space 4}-12.86281{col 70}{space 3}-6.627414
+{txt}{space 8}Kansas  {c |}{col 17}{res}{space 2} -1.85494{col 29}{space 2} 1.690905{col 40}{space 1}   -1.10{col 49}{space 3}0.273{col 57}{space 4}-5.170365{col 70}{space 3} 1.460486
+{txt}{space 6}Kentucky  {c |}{col 17}{res}{space 2} 1.510686{col 29}{space 2} 1.571534{col 40}{space 1}    0.96{col 49}{space 3}0.336{col 57}{space 4}-1.570683{col 70}{space 3} 4.592055
+{txt}{space 5}Louisiana  {c |}{col 17}{res}{space 2} -2.27519{col 29}{space 2} 1.806992{col 40}{space 1}   -1.26{col 49}{space 3}0.208{col 57}{space 4}-5.818231{col 70}{space 3} 1.267851
+{txt}{space 9}Maine  {c |}{col 17}{res}{space 2} 23.97638{col 29}{space 2} 6.932457{col 40}{space 1}    3.46{col 49}{space 3}0.001{col 57}{space 4} 10.38363{col 70}{space 3} 37.56912
+{txt}{space 6}Maryland  {c |}{col 17}{res}{space 2} 9.528026{col 29}{space 2} 3.056014{col 40}{space 1}    3.12{col 49}{space 3}0.002{col 57}{space 4} 3.535977{col 70}{space 3} 15.52007
+{txt}{space 1}Massachusetts  {c |}{col 17}{res}{space 2} 67.71068{col 29}{space 2} 7.001186{col 40}{space 1}    9.67{col 49}{space 3}0.000{col 57}{space 4} 53.98318{col 70}{space 3} 81.43819
+{txt}{space 6}Michigan  {c |}{col 17}{res}{space 2}  24.0297{col 29}{space 2} 2.009989{col 40}{space 1}   11.96{col 49}{space 3}0.000{col 57}{space 4} 20.08863{col 70}{space 3} 27.97076
+{txt}{space 5}Minnesota  {c |}{col 17}{res}{space 2} 3.909706{col 29}{space 2} 1.958016{col 40}{space 1}    2.00{col 49}{space 3}0.046{col 57}{space 4} .0705453{col 70}{space 3} 7.748867
+{txt}{space 3}Mississippi  {c |}{col 17}{res}{space 2}-1.472374{col 29}{space 2} 1.673841{col 40}{space 1}   -0.88{col 49}{space 3}0.379{col 57}{space 4}-4.754341{col 70}{space 3} 1.809593
+{txt}{space 6}Missouri  {c |}{col 17}{res}{space 2} 1.296078{col 29}{space 2} 1.528736{col 40}{space 1}    0.85{col 49}{space 3}0.397{col 57}{space 4}-1.701376{col 70}{space 3} 4.293532
+{txt}{space 7}Montana  {c |}{col 17}{res}{space 2} 45.91632{col 29}{space 2}   8.2142{col 40}{space 1}    5.59{col 49}{space 3}0.000{col 57}{space 4} 29.81041{col 70}{space 3} 62.02223
+{txt}{space 6}Nebraska  {c |}{col 17}{res}{space 2} 2.156904{col 29}{space 2} 1.581273{col 40}{space 1}    1.36{col 49}{space 3}0.173{col 57}{space 4}-.9435602{col 70}{space 3} 5.257368
+{txt}{space 8}Nevada  {c |}{col 17}{res}{space 2}  66.6336{col 29}{space 2} 10.56432{col 40}{space 1}    6.31{col 49}{space 3}0.000{col 57}{space 4} 45.91971{col 70}{space 3} 87.34748
+{txt}{space 1}New Hampshire  {c |}{col 17}{res}{space 2} 37.60383{col 29}{space 2} 8.554636{col 40}{space 1}    4.40{col 49}{space 3}0.000{col 57}{space 4} 20.83041{col 70}{space 3} 54.37724
+{txt}{space 4}New Jersey  {c |}{col 17}{res}{space 2} 41.86591{col 29}{space 2} 5.061273{col 40}{space 1}    8.27{col 49}{space 3}0.000{col 57}{space 4} 31.94207{col 70}{space 3} 51.78975
+{txt}{space 4}New Mexico  {c |}{col 17}{res}{space 2} 12.69381{col 29}{space 2} 3.679214{col 40}{space 1}    3.45{col 49}{space 3}0.001{col 57}{space 4} 5.479827{col 70}{space 3} 19.90779
+{txt}{space 6}New York  {c |}{col 17}{res}{space 2}  14.9977{col 29}{space 2} 2.843351{col 40}{space 1}    5.27{col 49}{space 3}0.000{col 57}{space 4}  9.42263{col 70}{space 3} 20.57277
+{txt}North Carolina  {c |}{col 17}{res}{space 2} 29.39075{col 29}{space 2} 1.997199{col 40}{space 1}   14.72{col 49}{space 3}0.000{col 57}{space 4} 25.47476{col 70}{space 3} 33.30674
+{txt}{space 2}North Dakota  {c |}{col 17}{res}{space 2}-16.82729{col 29}{space 2} 2.140988{col 40}{space 1}   -7.86{col 49}{space 3}0.000{col 57}{space 4}-21.02521{col 70}{space 3}-12.62937
+{txt}{space 10}Ohio  {c |}{col 17}{res}{space 2} 6.500902{col 29}{space 2}  1.59521{col 40}{space 1}    4.08{col 49}{space 3}0.000{col 57}{space 4} 3.373111{col 70}{space 3} 9.628693
+{txt}{space 6}Oklahoma  {c |}{col 17}{res}{space 2}-.5048094{col 29}{space 2} 1.802566{col 40}{space 1}   -0.28{col 49}{space 3}0.779{col 57}{space 4}-4.039172{col 70}{space 3} 3.029553
+{txt}{space 8}Oregon  {c |}{col 17}{res}{space 2} 96.12294{col 29}{space 2} 5.801945{col 40}{space 1}   16.57{col 49}{space 3}0.000{col 57}{space 4} 84.74683{col 70}{space 3}  107.499
+{txt}{space 2}Pennsylvania  {c |}{col 17}{res}{space 2}-1.782471{col 29}{space 2} 2.074065{col 40}{space 1}   -0.86{col 49}{space 3}0.390{col 57}{space 4}-5.849173{col 70}{space 3}  2.28423
+{txt}{space 2}Rhode Island  {c |}{col 17}{res}{space 2} 67.81384{col 29}{space 2}  3.73448{col 40}{space 1}   18.16{col 49}{space 3}0.000{col 57}{space 4}  60.4915{col 70}{space 3} 75.13619
+{txt}South Carolina  {c |}{col 17}{res}{space 2}  26.6963{col 29}{space 2} 2.680634{col 40}{space 1}    9.96{col 49}{space 3}0.000{col 57}{space 4} 21.44028{col 70}{space 3} 31.95233
+{txt}{space 2}South Dakota  {c |}{col 17}{res}{space 2}  12.5949{col 29}{space 2} 2.673836{col 40}{space 1}    4.71{col 49}{space 3}0.000{col 57}{space 4} 7.352207{col 70}{space 3}  17.8376
+{txt}{space 5}Tennessee  {c |}{col 17}{res}{space 2} 35.60067{col 29}{space 2} 2.407717{col 40}{space 1}   14.79{col 49}{space 3}0.000{col 57}{space 4} 30.87976{col 70}{space 3} 40.32157
+{txt}{space 9}Texas  {c |}{col 17}{res}{space 2} 17.25069{col 29}{space 2} 2.182251{col 40}{space 1}    7.90{col 49}{space 3}0.000{col 57}{space 4} 12.97186{col 70}{space 3} 21.52952
+{txt}{space 10}Utah  {c |}{col 17}{res}{space 2} 93.70669{col 29}{space 2} 6.133235{col 40}{space 1}   15.28{col 49}{space 3}0.000{col 57}{space 4} 81.68101{col 70}{space 3} 105.7324
+{txt}{space 7}Vermont  {c |}{col 17}{res}{space 2} 6.134744{col 29}{space 2} 5.420933{col 40}{space 1}    1.13{col 49}{space 3}0.258{col 57}{space 4}-4.494296{col 70}{space 3} 16.76378
+{txt}{space 6}Virginia  {c |}{col 17}{res}{space 2} 11.01197{col 29}{space 2} 1.803972{col 40}{space 1}    6.10{col 49}{space 3}0.000{col 57}{space 4} 7.474848{col 70}{space 3} 14.54909
+{txt}{space 4}Washington  {c |}{col 17}{res}{space 2} 100.1477{col 29}{space 2} 5.454275{col 40}{space 1}   18.36{col 49}{space 3}0.000{col 57}{space 4} 89.45329{col 70}{space 3} 110.8421
+{txt}{space 1}West Virginia  {c |}{col 17}{res}{space 2} -14.5546{col 29}{space 2}  1.38723{col 40}{space 1}  -10.49{col 49}{space 3}0.000{col 57}{space 4} -17.2746{col 70}{space 3} -11.8346
+{txt}{space 5}Wisconsin  {c |}{col 17}{res}{space 2} 7.190421{col 29}{space 2} 1.646119{col 40}{space 1}    4.37{col 49}{space 3}0.000{col 57}{space 4}  3.96281{col 70}{space 3} 10.41803
+{txt}{space 7}Wyoming  {c |}{col 17}{res}{space 2}  1.03662{col 29}{space 2} 3.911922{col 40}{space 1}    0.26{col 49}{space 3}0.791{col 57}{space 4}-6.633642{col 70}{space 3} 8.706882
+{txt}{space 15} {c |}
+{space 10}_cons {c |}{col 17}{res}{space 2} 17.54319{col 29}{space 2} 6.107333{col 40}{space 1}    2.87{col 49}{space 3}0.004{col 57}{space 4} 5.568296{col 70}{space 3} 29.51808
+{txt}{hline 16}{c BT}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{res}{txt}
+{com}. 
+. cap log close
+{smcl}
+{com}{sf}{ul off}
