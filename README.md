@@ -1,5 +1,5 @@
 # Jackson-Ward-Data-Project-3---Supporting-Materials
-All supporting materials (raw data w/ descriptions, Stata code, and Stata log) for BYU Econ 388 data project 3 done by Jackson Ward
+Descriptions of and links to the raw datasets used in this experiment
 
 ### New York Times Covid Cases data for each US county
 "us-counties-2020.csv"
